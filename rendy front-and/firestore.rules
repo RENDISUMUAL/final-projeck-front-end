@@ -1,0 +1,123 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn()
+        && request.auth.token.email == 'rendisumual322@gmail.com'
+        && request.auth.token.email_verified == true;
+    }
+
+    function isAssignedSecurity() {
+      let rolePath = /databases/$(database)/documents/zoo_user_roles/$(request.auth.token.email);
+      return isSignedIn()
+        && exists(rolePath)
+        && get(rolePath).data.email == request.auth.token.email
+        && get(rolePath).data.role == 'security'
+        && request.auth.token.email_verified == true;
+    }
+
+    match /zoo_user_roles/{email} {
+      allow read: if isAdmin() || (isSignedIn() && request.auth.token.email == email);
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /zoo_incidents/{incidentId} {
+      allow read, update: if isAdmin() || isAssignedSecurity();
+      allow create: if (isAdmin() || isAssignedSecurity())
+        || (request.resource.data.keys().hasOnly([
+          'title', 'type', 'location', 'priority', 'status', 'details', 'reportedBy', 'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.keys().hasAll([
+          'title', 'type', 'location', 'priority', 'status', 'details', 'reportedBy', 'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.title is string
+        && request.resource.data.title.size() > 0
+        && request.resource.data.title.size() <= 100
+        && request.resource.data.location is string
+        && request.resource.data.location.size() > 0
+        && request.resource.data.location.size() <= 100
+        && request.resource.data.details is string
+        && request.resource.data.details.size() > 0
+        && request.resource.data.details.size() <= 1200
+        && request.resource.data.type in ['Keadaan darurat', 'Anak hilang', 'Satwa lepas', 'Gangguan keamanan', 'Kesehatan pengunjung', 'Fasilitas rusak', 'Lainnya']
+        && request.resource.data.priority in ['Kritis', 'Tinggi', 'Sedang']
+        && request.resource.data.status == 'Baru'
+        && request.resource.data.reportedBy is string
+        && request.resource.data.reportedBy.size() <= 100
+        && request.resource.data.createdAt is string
+        && request.resource.data.updatedAt == request.resource.data.createdAt);
+      allow delete: if isAdmin();
+    }
+
+    // Informasi publik yang memang ditampilkan kepada pengunjung. Data petugas
+    // publik dipisah agar nomor telepon dan detail internal tidak ikut terbaca.
+    match /zoo_animals/{animalId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /zoo_habitats/{habitatId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /zoo_feeding_schedules/{scheduleId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /zoo_conservation_records/{recordId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /zoo_public_settings/{settingId} {
+      allow read: if settingId in ['tickets', 'staff'];
+      allow write: if isAdmin();
+    }
+
+    // Pengunjung hanya boleh membuat pesanan yang belum dibayar. Pembayaran
+    // tetap harus diverifikasi petugas/admin; data pesanan tidak dapat dibaca publik.
+    match /zoo_tickets/{ticketId} {
+      allow read, update, delete: if isAdmin();
+      allow create: if isAdmin()
+        || (request.resource.data.keys().hasOnly([
+          'id', 'visitorName', 'date', 'quantity', 'adultQty', 'childQty', 'total',
+          'paymentMethod', 'paymentStatus', 'status', 'createdAt', 'source'
+        ])
+        && request.resource.data.keys().hasAll([
+          'id', 'visitorName', 'date', 'quantity', 'adultQty', 'childQty', 'total',
+          'paymentMethod', 'paymentStatus', 'status', 'createdAt', 'source'
+        ])
+        && request.resource.data.id == ticketId
+        && request.resource.data.visitorName is string
+        && request.resource.data.visitorName.size() > 0
+        && request.resource.data.visitorName.size() <= 100
+        && request.resource.data.date is string
+        && request.resource.data.adultQty is int
+        && request.resource.data.childQty is int
+        && request.resource.data.adultQty >= 0
+        && request.resource.data.childQty >= 0
+        && request.resource.data.adultQty <= 20
+        && request.resource.data.childQty <= 20
+        && request.resource.data.quantity == request.resource.data.adultQty + request.resource.data.childQty
+        && request.resource.data.quantity > 0
+        && request.resource.data.total is int
+        && request.resource.data.total >= 0
+        && request.resource.data.total <= 5000000
+        && request.resource.data.paymentMethod in ['QRIS (simulasi)', 'Tunai di loket', 'Transfer (simulasi)']
+        && request.resource.data.paymentStatus == 'Belum bayar'
+        && request.resource.data.status == 'Belum digunakan'
+        && request.resource.data.source == 'visitor-portal'
+        && request.resource.data.createdAt is string);
+    }
+
+    match /{document=**} {
+      allow read, write: if isAdmin();
+    }
+  }
+}

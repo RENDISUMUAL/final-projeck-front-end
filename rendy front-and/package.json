@@ -1,15 +1,17 @@
 {
-  "name": "rendy-front-and",
+  "name": "smart-zoo-management-and-animal-information-system",
   "private": true,
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "node scripts/dev.js",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "start": "node server/index.js"
   },
   "dependencies": {
+    "firebase": "^13.1.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   },
