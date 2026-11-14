@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { collection, doc, onSnapshot, setDoc } from 'firebase/firestore'
+import { addDoc, collection, doc, onSnapshot, setDoc } from 'firebase/firestore'
 import { db } from './firebase'
 import './VisitorPortal.css'
 

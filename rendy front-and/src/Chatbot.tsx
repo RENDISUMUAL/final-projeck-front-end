@@ -157,17 +157,22 @@ export default function Chatbot({ websiteData, compact = false }: { websiteData:
         }
         answer = getN8nAnswer(result)
       } else {
-        const response = await fetch('/api/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            provider: 'gemini',
-            model: settings.model.trim() || DEFAULT_GEMINI_MODEL,
-            history: history.map(({ role, content }) => ({ role, content })),
-            websiteContext: `${assistantInstruction}\n\n${websiteContext(websiteData)}`,
-          }),
-        })
-        answer = await getResponse(response)
+        try {
+          const response = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              provider: 'gemini',
+              model: settings.model.trim() || DEFAULT_GEMINI_MODEL,
+              history: history.map(({ role, content }) => ({ role, content })),
+              websiteContext: `${assistantInstruction}\n\n${websiteContext(websiteData)}`,
+            }),
+          })
+          answer = await getResponse(response)
+        } catch {
+          // Fallback cerdas ke pencarian data website agar pengguna tetap mendapatkan jawaban akurat
+          answer = searchWebsite(text, websiteData)
+        }
       }
       setMessages((current) => [...current, { id: crypto.randomUUID(), role: 'assistant', content: answer }])
     } catch (requestError) {

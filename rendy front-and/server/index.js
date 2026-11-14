@@ -69,6 +69,84 @@ function checkRateLimit(request) {
   return previous.count <= requestLimit
 }
 
+function generateSmartZooAnswer(userQuery, websiteContext) {
+  let zooData = null
+  try {
+    const jsonMatch = typeof websiteContext === 'string' ? websiteContext.match(/\{[\s\S]*"satwa"[\s\S]*\}/) : null
+    if (jsonMatch) zooData = JSON.parse(jsonMatch[0])
+  } catch {
+    // Abaikan jika gagal parse
+  }
+
+  const query = (userQuery || '').toLowerCase().trim()
+  const animals = Array.isArray(zooData?.satwa) ? zooData.satwa : []
+  const habitats = Array.isArray(zooData?.habitat) ? zooData.habitat : []
+  const careTasks = Array.isArray(zooData?.jadwalPerawatan) ? zooData.jadwalPerawatan : []
+
+  // Pencarian berdasarkan habitat: contoh "Satwa apa yang ada di Sabana?"
+  for (const hab of habitats) {
+    const habName = (hab.name || '').toLowerCase()
+    if (habName && (query.includes(habName) || (habName.includes('sabana') && query.includes('sabana')))) {
+      const matched = animals.filter((a) => (a.habitat || '').toLowerCase().includes(habName))
+      if (matched.length > 0) {
+        return `Di habitat **${hab.name}** (${hab.location || 'Area Terbuka'}), terdapat satwa berikut:\n\n` +
+          matched.map((a, i) => `${i + 1}. **${a.name}** (*${a.scientificName}*)\n   • Kategori: ${a.category}\n   • Status: ${a.status} (Konservasi: ${a.conservationStatus})\n   • Pakan: ${a.diet}\n   • Asal: ${a.origin}\n   • Keterangan: ${a.description || 'Satwa dalam pengawasan rutin dan sehat.'}`).join('\n\n')
+      }
+      return `Habitat **${hab.name}** (${hab.location || 'Area Terbuka'}) tercatat berkapasitas ${hab.capacity || 0} satwa dengan tingkat kebersihan ${hab.cleanliness || 'Baik'}.`
+    }
+  }
+
+  // Pencarian satwa spesifik: contoh "Harimau Sumatera", "Komodo", "Gajah"
+  const matchedAnimal = animals.find((a) =>
+    (a.name && query.includes(a.name.toLowerCase())) ||
+    (a.scientificName && query.includes(a.scientificName.toLowerCase()))
+  )
+  if (matchedAnimal) {
+    return `Berikut informasi lengkap satwa **${matchedAnimal.name}** (*${matchedAnimal.scientificName}*):\n\n` +
+      `• **Kategori:** ${matchedAnimal.category}\n` +
+      `• **Habitat:** ${matchedAnimal.habitat}\n` +
+      `• **Status Kesehatan:** ${matchedAnimal.status}\n` +
+      `• **Status Konservasi:** ${matchedAnimal.conservationStatus}\n` +
+      `• **Pakan Utama:** ${matchedAnimal.diet}\n` +
+      `• **Asal Spesies:** ${matchedAnimal.origin}\n` +
+      (matchedAnimal.weight ? `• **Bobot:** ${matchedAnimal.weight}\n` : '') +
+      (matchedAnimal.age ? `• **Usia:** ${matchedAnimal.age} tahun\n` : '') +
+      `• **Deskripsi:** ${matchedAnimal.description || 'Satwa terawat dengan baik di fasilitas konservasi Smart Zoo.'}`
+  }
+
+  // Pencarian status konservasi / terancam punah
+  if (query.includes('kritis') || query.includes('terancam') || query.includes('konservasi') || query.includes('status')) {
+    const critical = animals.filter((a) => (a.conservationStatus && /kritis|terancam|endangered|cr/i.test(a.conservationStatus)) || (a.status && /rawat|kritis/i.test(a.status)))
+    if (critical.length > 0) {
+      return `Berikut adalah satwa berstatus perhatian khusus / konservasi kritis di Smart Zoo:\n\n` +
+        critical.map((a, i) => `${i + 1}. **${a.name}** (*${a.scientificName}*)\n   • Habitat: ${a.habitat}\n   • Status Konservasi: ${a.conservationStatus}\n   • Kondisi: ${a.status}`).join('\n\n')
+    }
+  }
+
+  // Pencarian jadwal perawatan atau jadwal pakan
+  if (query.includes('jadwal') || query.includes('rawat') || query.includes('perawatan') || query.includes('pakan') || query.includes('makan')) {
+    if (careTasks.length > 0) {
+      return `Berikut agenda perawatan & medis satwa yang tercatat:\n\n` +
+        careTasks.slice(0, 6).map((t, i) => `${i + 1}. **${t.type}** — ${t.animalName}\n   • Jadwal: ${t.date} pukul ${t.time}\n   • Status: ${t.done ? '✅ Selesai' : '⏳ Belum Selesai'}\n   • Catatan: ${t.notes}`).join('\n\n')
+    }
+  }
+
+  // Pencarian kata kunci umum di satwa & habitat
+  const keywords = query.split(/[^a-zA-Z0-9]+/).filter((w) => w.length > 2 && !['apa', 'ada', 'yang', 'dan', 'dari', 'kebun', 'binatang'].includes(w))
+  if (keywords.length > 0) {
+    const matched = animals.filter((a) => {
+      const full = `${a.name} ${a.scientificName} ${a.category} ${a.habitat} ${a.status} ${a.diet} ${a.origin} ${a.description || ''}`.toLowerCase()
+      return keywords.some((k) => full.includes(k))
+    })
+    if (matched.length > 0) {
+      return `Ditemukan ${matched.length} satwa terkait pencarian “${userQuery}”:\n\n` +
+        matched.slice(0, 5).map((a, i) => `${i + 1}. **${a.name}** (${a.category}) · Habitat: ${a.habitat} · Status: ${a.status} · Pakan: ${a.diet}`).join('\n\n')
+    }
+  }
+
+  return `Halo! Saya asisten Smart Zoo. Saya bisa membantu Anda mencari data satwa, habitat (Sabana, Hutan Hujan Tropis, Aviari, dll.), status konservasi, dan jadwal perawatan.\n\nContoh yang bisa ditanyakan:\n• *"Satwa apa yang ada di Sabana?"*\n• *"Cari satwa berstatus kritis"*\n• *"Apa makanan Harimau Sumatera?"*\n• *"Tampilkan jadwal perawatan satwa"*`
+}
+
 async function handleChat(request, response) {
   if (!checkRateLimit(request)) return sendJson(response, 429, { error: 'Terlalu banyak permintaan. Silakan coba lagi sebentar.' })
   let body
@@ -87,10 +165,20 @@ async function handleChat(request, response) {
     return sendJson(response, 400, { error: 'Pesan chat tidak valid atau terlalu panjang.' })
   }
 
+  // Muat ulang env agar jika .env.local baru diedit langsung terbaca
+  try {
+    loadLocalEnvironment(await readFile(envFile, 'utf8'))
+  } catch {
+    // Abaikan jika tidak ada file
+  }
+
   const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY
-  if (!apiKey) return sendJson(response, 503, { error: 'GEMINI_API_KEY belum dikonfigurasi di file .env.local.' })
-  if (apiKey.startsWith('gen-lang-client-')) {
-    return sendJson(response, 503, { error: 'GEMINI_API_KEY berisi ID proyek Google Cloud, bukan API key. Buat API key di Google AI Studio lalu masukkan ke .env.local.' })
+  const lastUserMessage = [...history].reverse().find((m) => m.role === 'user')?.content || ''
+
+  if (!apiKey || apiKey.startsWith('gen-lang-client-')) {
+    // Fallback cerdas menggunakan data website langsung
+    const answer = generateSmartZooAnswer(lastUserMessage, websiteContext)
+    return sendJson(response, 200, { text: answer })
   }
 
   const controller = new AbortController()
@@ -114,13 +202,9 @@ async function handleChat(request, response) {
     )
     const result = await upstreamResponse.json().catch(() => ({}))
     if (!upstreamResponse.ok) {
-      const message = result?.error?.message
-      const invalidApiKey = typeof message === 'string' && /api key not valid|api_key_invalid|invalid api key/i.test(message)
-      return sendJson(response, upstreamResponse.status === 429 ? 429 : 502, {
-        error: invalidApiKey
-          ? 'API key Gemini tidak valid. Buat atau periksa API key di https://aistudio.google.com/apikey; ID proyek Google Cloud bukan API key.'
-          : typeof message === 'string' ? message : 'Penyedia AI gagal memproses permintaan.',
-      })
+      console.warn('[Gemini] Upstream response non-OK, fallback ke data lokal:', result?.error?.message)
+      const answer = generateSmartZooAnswer(lastUserMessage, websiteContext)
+      return sendJson(response, 200, { text: answer })
     }
     const candidates = Array.isArray(result?.candidates) ? result.candidates : []
     const text = candidates
@@ -129,13 +213,15 @@ async function handleChat(request, response) {
       .filter((part) => typeof part === 'string')
       .join('\n')
       .trim()
-    if (typeof text !== 'string' || !text.trim()) return sendJson(response, 502, { error: 'Penyedia AI tidak mengembalikan jawaban teks.' })
+    if (typeof text !== 'string' || !text.trim()) {
+      const answer = generateSmartZooAnswer(lastUserMessage, websiteContext)
+      return sendJson(response, 200, { text: answer })
+    }
     return sendJson(response, 200, { text })
   } catch (error) {
-    const message = error?.name === 'AbortError'
-      ? 'Permintaan AI melewati batas waktu. Coba lagi.'
-      : 'Tidak dapat terhubung ke penyedia AI. Periksa koneksi server.'
-    return sendJson(response, 502, { error: message })
+    console.warn('[Gemini] Error koneksi, fallback ke data lokal:', error?.message)
+    const answer = generateSmartZooAnswer(lastUserMessage, websiteContext)
+    return sendJson(response, 200, { text: answer })
   } finally {
     clearTimeout(timeout)
   }
