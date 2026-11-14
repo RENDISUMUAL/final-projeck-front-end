@@ -1,0 +1,20 @@
+# Dependencies
+node_modules/
+rendy front-and/node_modules/
+
+# Production build
+dist/
+rendy front-and/dist/
+
+# Local Environment Variables & Secrets
+*.local
+.env.local
+rendy front-and/.env.local
+
+# Logs
+*.log
+rendy front-and/*.log
+
+# IDE
+.vscode/
+.idea/

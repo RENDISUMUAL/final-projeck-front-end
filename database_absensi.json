@@ -1,0 +1,32 @@
+[
+  {
+    "id": "1",
+    "waktu": "08:05",
+    "tanggal": "02-11-2026",
+    "nim": "21021106001",
+    "nama": "Rendy Christian Sumual",
+    "mata_kuliah": "Pemrograman Web",
+    "status": "HADIR",
+    "keterangan": "Tepat Waktu"
+  },
+  {
+    "id": "2",
+    "waktu": "08:12",
+    "tanggal": "02-11-2026",
+    "nim": "21021106002",
+    "nama": "Gabriella Priscilia",
+    "mata_kuliah": "Pemrograman Web",
+    "status": "HADIR",
+    "keterangan": "Tepat Waktu"
+  },
+  {
+    "id": "3",
+    "waktu": "08:30",
+    "tanggal": "02-11-2026",
+    "nim": "21021106003",
+    "nama": "Michael Jonathan",
+    "mata_kuliah": "Pemrograman Web",
+    "status": "IZIN",
+    "keterangan": "Ada Surat Lomba"
+  }
+]
