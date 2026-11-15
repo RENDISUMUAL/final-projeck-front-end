@@ -33,18 +33,42 @@ export default function IncidentCenter({ role, currentUserEmail }: { role: 'admi
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    try {
-      const cached = localStorage.getItem(INCIDENTS_CACHE_KEY)
-      if (cached) setIncidents(JSON.parse(cached) as ZooIncident[])
-    } catch {
-      // Cache lokal opsional; snapshot Firestore tetap menjadi sumber data.
+    const loadFromLocalStorage = () => {
+      try {
+        const cached = localStorage.getItem(INCIDENTS_CACHE_KEY)
+        if (cached) {
+          const parsed = JSON.parse(cached) as ZooIncident[]
+          setIncidents((current) => {
+            const idMap = new Map<string, ZooIncident>()
+            if (Array.isArray(parsed)) parsed.forEach((item) => idMap.set(item.id, item))
+            current.forEach((item) => idMap.set(item.id, item))
+            return Array.from(idMap.values()).sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+          })
+        }
+      } catch {}
     }
-    return subscribeToFirestore<ZooIncident>(INCIDENTS_COLLECTION, (items) => {
+
+    loadFromLocalStorage()
+    window.addEventListener('smartzoo:incident-reported', loadFromLocalStorage)
+    window.addEventListener('storage', loadFromLocalStorage)
+    window.addEventListener('rimbakita:data-changed', loadFromLocalStorage)
+
+    const unsubscribe = subscribeToFirestore<ZooIncident>(INCIDENTS_COLLECTION, (items) => {
       const sorted = [...items].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
       setIncidents(sorted)
       setError('')
       try { localStorage.setItem(INCIDENTS_CACHE_KEY, JSON.stringify(sorted)) } catch { /* cache penuh */ }
-    }, (reason) => setError(`Sinkronisasi real-time gagal: ${reason.message}`))
+    }, (reason) => {
+      // Jika sinkronisasi Firestore terkendala, tetap gunakan data lokal
+      console.warn(`[Firebase] Sinkronisasi Firestore insiden: ${reason.message}`)
+    })
+
+    return () => {
+      window.removeEventListener('smartzoo:incident-reported', loadFromLocalStorage)
+      window.removeEventListener('storage', loadFromLocalStorage)
+      window.removeEventListener('rimbakita:data-changed', loadFromLocalStorage)
+      unsubscribe()
+    }
   }, [])
 
   async function reportIncident(event: FormEvent<HTMLFormElement>) {
@@ -136,20 +160,45 @@ export default function IncidentCenter({ role, currentUserEmail }: { role: 'admi
             <div className="incident-empty"><span>🛡️</span><strong>Belum ada laporan insiden</strong><p>Laporan baru dari petugas akan muncul di sini secara langsung.</p></div>
           ) : (
             <div className="incident-list">
-              {incidents.map((incident) => (
-                <article className={`incident-card incident-priority-${incident.priority.toLowerCase()}`} key={incident.id}>
-                  <div className="incident-card-top"><span className={`incident-priority-tag priority-${incident.priority.toLowerCase()}`}>{incident.priority}</span><span className={`incident-status status-${incident.status.toLowerCase()}`}>{incident.status}</span></div>
-                  <h4>{incident.title}</h4>
-                  <p className="incident-location">⌖ {incident.location} <span>·</span> {incident.type}</p>
-                  <p className="incident-details">{incident.details}</p>
-                  <div className="incident-card-meta"><span>Oleh {incident.reportedBy}</span><time dateTime={incident.createdAt}>{formatDateTime(incident.createdAt)}</time></div>
-                  <div className="incident-card-actions">
-                    {incident.status === 'Baru' && <button type="button" onClick={() => void updateIncident(incident, 'Ditangani')}>Ambil penanganan</button>}
-                    {incident.status !== 'Selesai' && <button type="button" className="incident-resolve" onClick={() => void updateIncident(incident, 'Selesai')}>Tandai selesai</button>}
-                    {role === 'admin' && <button type="button" className="incident-delete" onClick={() => void removeIncident(incident)}>Hapus</button>}
-                  </div>
-                </article>
-              ))}
+              {incidents.map((incident) => {
+                const isVisitor = incident.reportedBy.toLowerCase().startsWith('pengunjung')
+                return (
+                  <article className={`incident-card incident-priority-${incident.priority.toLowerCase()}`} key={incident.id}>
+                    <div className="incident-card-top">
+                      <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <span className={`incident-priority-tag priority-${incident.priority.toLowerCase()}`}>{incident.priority}</span>
+                        {isVisitor && (
+                          <span style={{ backgroundColor: '#e0f2fe', color: '#0369a1', padding: '3px 8px', borderRadius: '99px', fontSize: '8px', fontWeight: 800, letterSpacing: '.4px' }}>
+                            👤 LAPORAN PENGUNJUNG
+                          </span>
+                        )}
+                      </div>
+                      <span className={`incident-status status-${incident.status.toLowerCase()}`}>{incident.status}</span>
+                    </div>
+                    <h4>{incident.title}</h4>
+                    <p className="incident-location">⌖ {incident.location} <span>·</span> {incident.type}</p>
+                    {isVisitor && (
+                      <div style={{ margin: '8px 0', padding: '7px 11px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '7px', fontSize: '10px', color: '#166534', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span>👤</span>
+                        <div>
+                          <strong>Nama Pelapor (Pengunjung): </strong>
+                          <span>{incident.reportedBy.replace(/^Pengunjung:\s*/i, '')}</span>
+                        </div>
+                      </div>
+                    )}
+                    <p className="incident-details">{incident.details}</p>
+                    <div className="incident-card-meta">
+                      <span>{isVisitor ? `Sumber: ${incident.reportedBy}` : `Petugas: ${incident.reportedBy}`}</span>
+                      <time dateTime={incident.createdAt}>{formatDateTime(incident.createdAt)}</time>
+                    </div>
+                    <div className="incident-card-actions">
+                      {incident.status === 'Baru' && <button type="button" onClick={() => void updateIncident(incident, 'Ditangani')}>Ambil penanganan</button>}
+                      {incident.status !== 'Selesai' && <button type="button" className="incident-resolve" onClick={() => void updateIncident(incident, 'Selesai')}>Tandai selesai</button>}
+                      {role === 'admin' && <button type="button" className="incident-delete" onClick={() => void removeIncident(incident)}>Hapus</button>}
+                    </div>
+                  </article>
+                )
+              })}
             </div>
           )}
         </section>

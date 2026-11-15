@@ -485,6 +485,44 @@ function ZooDashboard({ role, userEmail }: { role: 'admin'; userEmail: string })
   const [, setModuleDataVersion] = useState(0)
   const [soundPlaying, setSoundPlaying] = useState<string | null>(null)
 
+  const [activeIncidentsCount, setActiveIncidentsCount] = useState<number>(0)
+  const [latestVisitorIncident, setLatestVisitorIncident] = useState<{ id: string; title: string; reporter: string; location: string } | null>(null)
+
+  useEffect(() => {
+    const checkIncidents = () => {
+      try {
+        const cached = localStorage.getItem('smartzoo_incidents_v1')
+        if (cached) {
+          const list = JSON.parse(cached)
+          if (Array.isArray(list)) {
+            const active = list.filter((i: { status?: string }) => i.status !== 'Selesai')
+            setActiveIncidentsCount(active.length)
+            const visitorReport = active.find((i: { reportedBy?: string }) => String(i.reportedBy || '').toLowerCase().startsWith('pengunjung'))
+            if (visitorReport) {
+              setLatestVisitorIncident({
+                id: visitorReport.id,
+                title: visitorReport.title,
+                reporter: String(visitorReport.reportedBy || '').replace(/^Pengunjung:\s*/i, ''),
+                location: visitorReport.location,
+              })
+            } else {
+              setLatestVisitorIncident(null)
+            }
+          }
+        }
+      } catch {}
+    }
+    checkIncidents()
+    window.addEventListener('smartzoo:incident-reported', checkIncidents)
+    window.addEventListener('storage', checkIncidents)
+    window.addEventListener('rimbakita:data-changed', checkIncidents)
+    return () => {
+      window.removeEventListener('smartzoo:incident-reported', checkIncidents)
+      window.removeEventListener('storage', checkIncidents)
+      window.removeEventListener('rimbakita:data-changed', checkIncidents)
+    }
+  }, [])
+
   useEffect(() => {
     const refresh = () => setModuleDataVersion((version) => version + 1)
     window.addEventListener('rimbakita:data-changed', refresh)
@@ -857,6 +895,9 @@ function ZooDashboard({ role, userEmail }: { role: 'admin'; userEmail: string })
             <button key={item.id} className={`nav-item ${view === item.id ? 'active' : ''}`} onClick={() => setView(item.id)}>
               <span className="nav-icon" aria-hidden="true">{item.icon}</span>{item.label}
               {item.id === 'care' && pendingTasks > 0 && <span className="nav-count">{pendingTasks}</span>}
+              {item.id === 'incidents' && activeIncidentsCount > 0 && (
+                <span className="nav-count" style={{ backgroundColor: '#dc2626', color: '#fff' }}>{activeIncidentsCount}</span>
+              )}
             </button>
           ))}
         </nav>
@@ -885,6 +926,23 @@ function ZooDashboard({ role, userEmail }: { role: 'admin'; userEmail: string })
         </header>
 
         <div className="page-content">
+          {latestVisitorIncident && view !== 'incidents' && (
+            <div style={{ margin: '0 0 16px', padding: '12px 18px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{ fontSize: '20px' }}>🚨</span>
+                <div>
+                  <strong style={{ color: '#991b1b', fontSize: '13px' }}>Laporan Darurat Baru dari Pengunjung!</strong>
+                  <p style={{ margin: '2px 0 0', color: '#b91c1c', fontSize: '12px' }}>
+                    <strong>Pelapor:</strong> {latestVisitorIncident.reporter} · <strong>Kejadian:</strong> {latestVisitorIncident.title} (Lokasi: {latestVisitorIncident.location})
+                  </p>
+                </div>
+              </div>
+              <button type="button" onClick={() => setView('incidents')} style={{ padding: '7px 14px', background: '#dc2626', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', fontSize: '12px', cursor: 'pointer' }}>
+                Buka Pusat Komando →
+              </button>
+            </div>
+          )}
+
           {notice && (
             <div className="toast" role="status">
               <span>✓</span>{notice}

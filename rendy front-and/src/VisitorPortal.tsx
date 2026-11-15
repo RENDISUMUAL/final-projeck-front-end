@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { addDoc, collection, doc, onSnapshot, setDoc } from 'firebase/firestore'
+import { collection, doc, onSnapshot, setDoc } from 'firebase/firestore'
 import { db } from './firebase'
 import './VisitorPortal.css'
 
@@ -125,17 +125,57 @@ export default function VisitorPortal({ onManagerLogin }: { onManagerLogin: () =
     setSaving(true)
     setError('')
     try {
-      await addDoc(collection(db, 'zoo_incidents'), {
+      const incidentId = crypto.randomUUID()
+      const now = new Date().toISOString()
+      const rawName = String(data.get('name') ?? '').trim()
+      const reporterName = rawName || 'Pengunjung Anonim'
+      const phone = String(data.get('phone') ?? '').trim()
+      const reportedBy = phone ? `Pengunjung: ${reporterName} (HP: ${phone})` : `Pengunjung: ${reporterName}`
+      const rawDetails = String(data.get('details') ?? '').trim()
+      const fullDetails = phone ? `${rawDetails}\n\n[Nomor Kontak Pelapor: ${phone}]` : rawDetails
+
+      const incidentData = {
+        id: incidentId,
         title: String(data.get('title') ?? '').trim(),
         type: String(data.get('type') ?? 'Lainnya'),
         location: String(data.get('location') ?? '').trim(),
-        priority: String(data.get('priority') ?? 'Sedang'),
-        status: 'Baru',
-        details: String(data.get('details') ?? '').trim(),
-        reportedBy: `Pengunjung: ${String(data.get('name') ?? 'Anonim').trim().slice(0, 60)}`,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      })
+        priority: String(data.get('priority') ?? 'Sedang') as 'Kritis' | 'Tinggi' | 'Sedang',
+        status: 'Baru' as const,
+        details: fullDetails,
+        reportedBy: reportedBy.slice(0, 100),
+        createdAt: now,
+        updatedAt: now,
+      }
+
+      // 1. Simpan ke localStorage agar Pusat Komando Admin langsung membaca seketika
+      try {
+        const cached = JSON.parse(localStorage.getItem('smartzoo_incidents_v1') || '[]')
+        const updated = [incidentData, ...(Array.isArray(cached) ? cached.filter((item: { id: string }) => item.id !== incidentId) : [])]
+        localStorage.setItem('smartzoo_incidents_v1', JSON.stringify(updated))
+        window.dispatchEvent(new Event('smartzoo:incident-reported'))
+        window.dispatchEvent(new Event('rimbakita:data-changed'))
+      } catch (storageErr) {
+        console.warn('Gagal simpan lokal cache insiden:', storageErr)
+      }
+
+      // 2. Simpan ke Cloud Firestore (zoo_incidents)
+      try {
+        const docRef = doc(db, 'zoo_incidents', incidentId)
+        await setDoc(docRef, {
+          title: incidentData.title,
+          type: incidentData.type,
+          location: incidentData.location,
+          priority: incidentData.priority,
+          status: 'Baru',
+          details: incidentData.details,
+          reportedBy: incidentData.reportedBy,
+          createdAt: now,
+          updatedAt: now,
+        })
+      } catch (firestoreErr) {
+        console.warn('Penyimpanan Firestore gagal (laporan tetap tersimpan di lokal):', firestoreErr)
+      }
+
       setReportSent(true)
       form.reset()
     } catch (reason) {
@@ -188,7 +228,17 @@ export default function VisitorPortal({ onManagerLogin }: { onManagerLogin: () =
 
         {tab === 'tickets' && <section className="visitor-section"><SectionTitle eyebrow="KUNJUNGAN ANDA" title="Pesan tiket kunjungan" copy="Buat reservasi dan simpan kode pesanan. Pembayaran langsung belum terhubung ke payment gateway."/><div className="visitor-ticket-layout"><form className="visitor-ticket-form" onSubmit={(event) => void submitTicket(event)}><h3>Rincian tiket</h3><label>Nama pemesan<input name="name" required maxLength={100} placeholder="Nama lengkap"/></label><label>Tanggal kunjungan<input name="date" type="date" min={today()} defaultValue={today()} required/></label><div className="visitor-qty-row"><label>Dewasa <small>{money(prices.adult)} / orang</small><input type="number" min="0" max="20" value={adultQty} onChange={(event) => setAdultQty(Number(event.target.value))}/></label><label>Anak <small>{money(prices.child)} / orang</small><input type="number" min="0" max="20" value={childQty} onChange={(event) => setChildQty(Number(event.target.value))}/></label></div><label>Metode pembayaran saat kedatangan<select name="paymentMethod"><option>QRIS (simulasi)</option><option>Tunai di loket</option><option>Transfer (simulasi)</option></select></label><div className="visitor-ticket-total"><span>Total estimasi</span><strong>{money(adultQty * prices.adult + childQty * prices.child)}</strong></div><button className="visitor-primary" type="submit" disabled={saving}>{saving ? 'Menyimpan pesanan…' : 'Buat pesanan tiket'}</button><small className="visitor-payment-note">Demo reservasi: belum ada transaksi uang nyata. Pembayaran dan validasi tiket dilakukan di loket.</small></form><aside className="visitor-ticket-side"><span>🎟️</span><h3>Satu langkah menuju petualangan</h3><p>Pesanan tersimpan ke Firestore dan dapat dipantau pengelola. Bawa kode pesanan saat ke loket.</p>{receipt && <div className="visitor-receipt"><small>PESANAN TERSIMPAN</small><strong>{receipt.code}</strong><span>{receipt.name} · {receipt.date}</span><b>{money(receipt.total)}</b><img src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(receipt.code)}`} alt={`QR referensi pesanan ${receipt.code}`}/><em>QR ini hanya kode referensi reservasi, bukan bukti pembayaran.</em></div>}</aside></div></section>}
 
-        {tab === 'report' && <section className="visitor-section"><SectionTitle eyebrow="BANTUAN & KESELAMATAN" title="Sampaikan laporan kepada petugas" copy="Laporan dikirim langsung ke Pusat Komando dan muncul real-time. Untuk keadaan darurat, segera cari petugas terdekat."/><div className="visitor-report-layout"><form className="visitor-report-form" onSubmit={(event) => void submitIncident(event)}><label>Nama pelapor (opsional)<input name="name" maxLength={60} placeholder="Boleh dikosongkan"/></label><label>Jenis laporan<select name="type"><option>Keadaan darurat</option><option>Anak hilang</option><option>Satwa lepas</option><option>Gangguan keamanan</option><option>Kesehatan pengunjung</option><option>Fasilitas rusak</option><option>Lainnya</option></select></label><label>Prioritas<select name="priority"><option>Kritis</option><option>Tinggi</option><option selected>Sedang</option></select></label><label>Lokasi<input name="location" required maxLength={100} placeholder="Contoh: Zona Sabana, dekat loket"/></label><label>Judul laporan<input name="title" required maxLength={100} placeholder="Ringkas kejadian"/></label><label>Detail<textarea name="details" required rows={4} maxLength={1200} placeholder="Ceritakan situasi dan bantuan yang diperlukan…"/></label><button className="visitor-primary" type="submit" disabled={saving}>{saving ? 'Mengirim…' : 'Kirim laporan ke petugas'}</button><small>Jangan gunakan formulir ini sebagai pengganti prosedur layanan darurat resmi.</small></form><aside className="visitor-report-help"><span>🛟</span><h3>Perlu bantuan segera?</h3><p>Datangi petugas berseragam atau pos informasi terdekat. Laporan ini diteruskan ke pusat komando pengelola.</p>{reportSent && <div className="visitor-report-success" role="status">✓ Laporan terkirim. Petugas akan menerima pembaruan ini.</div>}</aside></div></section>}
+        {tab === 'report' && <section className="visitor-section"><SectionTitle eyebrow="BANTUAN & KESELAMATAN" title="Sampaikan laporan kepada petugas" copy="Laporan dikirim langsung ke Pusat Komando dan muncul real-time. Untuk keadaan darurat, segera cari petugas terdekat."/><div className="visitor-report-layout"><form className="visitor-report-form" onSubmit={(event) => void submitIncident(event)}>
+          <label>Nama pelapor (Pengunjung)<input name="name" required maxLength={60} placeholder="Tulis nama lengkap Anda (contoh: Rendy Sumual)"/></label>
+          <label>Nomor HP / WhatsApp (opsional)<input name="phone" type="tel" maxLength={20} placeholder="Contoh: 08123456789 (agar petugas dapat menghubungi Anda)"/></label>
+          <label>Jenis laporan<select name="type"><option>Keadaan darurat</option><option selected>Anak hilang</option><option>Satwa lepas</option><option>Gangguan keamanan</option><option>Kesehatan pengunjung</option><option>Fasilitas rusak</option><option>Lainnya</option></select></label>
+          <label>Prioritas<select name="priority"><option>Kritis</option><option>Tinggi</option><option selected>Sedang</option></select></label>
+          <label>Lokasi kejadian<input name="location" required maxLength={100} placeholder="Contoh: Zona Sabana, dekat kandang jerapah"/></label>
+          <label>Judul laporan<input name="title" required maxLength={100} placeholder="Contoh: Anak terpisah dari rombongan"/></label>
+          <label>Detail & Ciri-ciri<textarea name="details" required rows={4} maxLength={1200} placeholder="Ceritakan situasi, ciri-ciri anak/satwa, dan bantuan yang diperlukan…"/></label>
+          <button className="visitor-primary" type="submit" disabled={saving}>{saving ? 'Mengirim ke Pusat Komando…' : 'Kirim laporan ke petugas'}</button>
+          <small>Laporan ini langsung diteruskan ke Web Admin Pusat Komando agar petugas segera mengetahui siapa pelapornya.</small>
+        </form><aside className="visitor-report-help"><span>🛟</span><h3>Perlu bantuan segera?</h3><p>Datangi petugas berseragam atau pos informasi terdekat. Laporan ini diteruskan ke pusat komando pengelola secara real-time.</p>{reportSent && <div className="visitor-report-success" role="status">✓ Laporan berhasil terkirim ke Pusat Komando! Nama pelapor dan detail telah masuk ke sistem admin.</div>}</aside></div></section>}
 
         <footer className="visitor-footer"><span>© 2026 Taman Satwa Nusantara · Smart Zoo</span><span>Informasi umum disinkronkan dari pengelola pusat</span></footer>
       </main>
