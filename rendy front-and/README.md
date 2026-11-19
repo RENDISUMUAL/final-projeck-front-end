@@ -1,4 +1,13 @@
+# final-projeck-front-end
+
 # Smart Zoo Management and Animal Information System
+
+## 📊 Slide Presentasi Kelompok 6 (Canva)
+- **Nama Presentasi:** **SMART ZOO PRESENTASI KELOMPOK 6**
+- **Link Canva:** [https://canva.link/dc7x6v2djo3gc6l](https://canva.link/dc7x6v2djo3gc6l)
+- **File Referensi:** [SMART ZOO PRESENTASI KELOMPOK 6.md](SMART%20ZOO%20PRESENTASI%20KELOMPOK%206.md)
+
+---
 
 Aplikasi web responsif untuk membantu simulasi pengelolaan kebun binatang: inventaris satwa dan kandang, layanan pengunjung, tiket QR, kesehatan, pakan, konservasi, serta operasional petugas.
 

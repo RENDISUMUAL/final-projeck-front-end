@@ -919,6 +919,27 @@ function ZooDashboard({ role, userEmail }: { role: 'admin'; userEmail: string })
         <header className="topbar">
           <div className="breadcrumb">Smart Zoo <span>/</span> <strong>{navItems.find((item) => item.id === view)?.label}</strong></div>
           <div className="topbar-actions">
+            <a
+              href="https://canva.link/dc7x6v2djo3gc6l"
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
+                padding: '5px 11px',
+                background: 'linear-gradient(135deg, #7d2ae8, #00c4cc)',
+                color: '#fff',
+                borderRadius: '7px',
+                fontSize: '10px',
+                fontWeight: 800,
+                textDecoration: 'none',
+                boxShadow: '0 2px 6px rgba(125,42,232,0.25)',
+              }}
+              title="Buka SMART ZOO PRESENTASI KELOMPOK 6 di Canva"
+            >
+              <span>📊</span> Slide Canva ↗
+            </a>
             <span className="today-date">{todayLabel}</span>
             <button className="notification-button" aria-label="Notifikasi">♧<i /></button>
             <div className="topbar-avatar">👩🏻‍💼</div>

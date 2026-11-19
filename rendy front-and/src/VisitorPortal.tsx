@@ -200,6 +200,27 @@ export default function VisitorPortal({ onManagerLogin }: { onManagerLogin: () =
         <nav className="visitor-nav" aria-label="Menu pengunjung">
           {tabs.map((item) => <button key={item.id} className={tab === item.id ? 'active' : ''} onClick={() => navigate(item.id)}><span>{item.icon}</span>{item.label}</button>)}
         </nav>
+        <a
+          href="https://canva.link/dc7x6v2djo3gc6l"
+          target="_blank"
+          rel="noreferrer"
+          className="visitor-canva-link"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '5px',
+            padding: '7px 12px',
+            background: 'linear-gradient(135deg, #7d2ae8, #00c4cc)',
+            color: '#fff',
+            borderRadius: '99px',
+            fontSize: '11px',
+            fontWeight: 800,
+            textDecoration: 'none',
+          }}
+          title="Buka SMART ZOO PRESENTASI KELOMPOK 6 di Canva"
+        >
+          <span>📊</span> Slide Canva ↗
+        </a>
         <button className="visitor-manager-link" onClick={onManagerLogin}>Masuk pengelola <span>↗</span></button>
       </header>
 
