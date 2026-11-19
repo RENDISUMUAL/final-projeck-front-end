@@ -1,3 +1,5 @@
+# final-projeck-front-end
+
 # Smart Zoo Management and Animal Information System
 
 Aplikasi web responsif untuk membantu simulasi pengelolaan kebun binatang: inventaris satwa dan kandang, layanan pengunjung, tiket QR, kesehatan, pakan, konservasi, serta operasional petugas.

@@ -39,7 +39,22 @@
 .incident-card-actions button, .role-user-row button { padding: 6px 8px; border: 1px solid #dce9dd; border-radius: 6px; background: #f4f9f4; color: #39704b; font-size: 8px; font-weight: 700; cursor: pointer; }
 .incident-card-actions button:hover, .role-user-row button:hover { background: #e7f2e8; }
 .incident-card-actions .incident-resolve { border-color: #dce9dd; background: #eef7ef; color: #4e8156; }
+.incident-card-actions .incident-whatsapp, .incident-modal-actions .incident-whatsapp-send { border-color: #b7e5c4; background: #effbf2; color: #16723a; }
 .incident-card-actions .incident-delete { margin-left: auto; border-color: #f0dfdc; background: #fff6f4; color: #ae6054; }
+.incident-modal-backdrop { position: fixed; z-index: 1000; inset: 0; display: grid; place-items: center; padding: 18px; background: #1c2a2099; }
+.incident-whatsapp-modal { position: relative; display: grid; gap: 12px; width: min(100%,520px); max-height: min(90vh,760px); overflow: auto; padding: 24px; border: 1px solid #e6eee6; border-radius: 16px; background: #fff; box-shadow: 0 24px 80px #12241840; }
+.incident-whatsapp-modal .eyebrow { margin: 0; color: #6b9472; font-size: 8px; font-weight: 800; letter-spacing: .9px; }
+.incident-whatsapp-modal h3 { margin: -7px 0 0; color: #34463a; font: 800 18px Manrope,'DM Sans',sans-serif; }
+.incident-modal-copy, .incident-modal-note { margin: 0; color: #78867c; font-size: 10px; line-height: 1.6; }
+.incident-modal-note { padding: 9px 11px; border-radius: 8px; background: #f6f8f5; }
+.incident-whatsapp-modal > label { display: grid; gap: 5px; color: #65756a; font-size: 9px; font-weight: 700; }
+.incident-whatsapp-modal input, .incident-whatsapp-modal select, .incident-whatsapp-modal textarea { width: 100%; padding: 10px 11px; border: 1px solid #e3ebe3; border-radius: 8px; background: #fff; color: #405447; font: 11px 'DM Sans',sans-serif; }
+.incident-whatsapp-modal textarea { resize: vertical; line-height: 1.55; }
+.incident-whatsapp-modal input:focus, .incident-whatsapp-modal select:focus, .incident-whatsapp-modal textarea:focus { border-color: #9dc5a2; outline: 2px solid #dff0e1; }
+.incident-modal-close { position: absolute; top: 13px; right: 15px; width: 30px; height: 30px; border: 0; border-radius: 50%; background: #f2f6f2; color: #607464; font-size: 19px; cursor: pointer; }
+.incident-modal-actions { display: flex; justify-content: flex-end; gap: 8px; padding-top: 3px; }
+.incident-modal-actions button { padding: 9px 13px; border: 1px solid #e1e9e1; border-radius: 8px; background: #fff; color: #5b6b5f; font-size: 10px; font-weight: 800; cursor: pointer; }
+.incident-modal-actions .incident-whatsapp-send { border-color: #b7e5c4; background: #16803e; color: #fff; }
 .incident-empty { display: grid; justify-items: center; gap: 7px; padding: 38px 18px; text-align: center; }
 .incident-empty > span { font-size: 25px; }.incident-empty strong { color: #536458; font-size: 10px; }.incident-empty p { max-width: 280px; margin: 0; color: #98a39a; font-size: 9px; line-height: 1.6; }
 .incident-error, .incident-notice { padding: 10px 12px; border: 1px solid #f0d7d2; border-radius: 8px; background: #fff6f3; color: #a54f43; font-size: 9px; line-height: 1.5; }

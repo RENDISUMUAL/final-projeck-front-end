@@ -43,7 +43,7 @@ service cloud.firestore {
         && request.resource.data.details is string
         && request.resource.data.details.size() > 0
         && request.resource.data.details.size() <= 1200
-        && request.resource.data.type in ['Keadaan darurat', 'Anak hilang', 'Satwa lepas', 'Gangguan keamanan', 'Kesehatan pengunjung', 'Fasilitas rusak', 'Lainnya']
+        && request.resource.data.type in ['Keadaan darurat', 'Anak hilang', 'Barang hilang', 'Satwa lepas', 'Gangguan keamanan', 'Kesehatan pengunjung', 'Fasilitas rusak', 'Lainnya']
         && request.resource.data.priority in ['Kritis', 'Tinggi', 'Sedang']
         && request.resource.data.status == 'Baru'
         && request.resource.data.reportedBy is string
