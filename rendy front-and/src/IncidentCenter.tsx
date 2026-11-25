@@ -14,6 +14,7 @@ export type ZooIncident = {
   status: IncidentStatus
   details: string
   reportedBy: string
+  photoUrl?: string
   createdAt: string
   updatedAt: string
 }
@@ -275,6 +276,20 @@ export default function IncidentCenter({ role, currentUserEmail }: { role: 'admi
                       </div>
                     )}
                     <p className="incident-details">{incident.details}</p>
+                    {incident.photoUrl && (
+                      <div className="incident-evidence-box">
+                        <div className="incident-evidence-header">
+                          <span>📷 BUKTI FOTO KEHILANGAN / CIRI-CIRI:</span>
+                          <small>Wujud yang dilaporkan pengunjung</small>
+                        </div>
+                        <div className="incident-evidence-preview">
+                          <a href={incident.photoUrl} target="_blank" rel="noopener noreferrer" title="Klik untuk membuka ukuran penuh">
+                            <img src={incident.photoUrl} alt={`Bukti foto ${incident.title}`} className="incident-evidence-img" />
+                          </a>
+                          <div className="incident-evidence-tip">🔍 Klik foto untuk melihat ukuran penuh / memperbesar</div>
+                        </div>
+                      </div>
+                    )}
                     <div className="incident-card-meta">
                       <span>{isVisitor ? `Sumber: ${incident.reportedBy}` : `Petugas: ${incident.reportedBy}`}</span>
                       <time dateTime={incident.createdAt}>{formatDateTime(incident.createdAt)}</time>
@@ -298,6 +313,15 @@ export default function IncidentCenter({ role, currentUserEmail }: { role: 'admi
           <p className="eyebrow">PEMBERITAHUAN PENGUNJUNG</p>
           <h3 id="incident-whatsapp-title">Kabar melalui WhatsApp</h3>
           <p className="incident-modal-copy">Laporan: <strong>{waTargetIncident.title}</strong> · {waTargetIncident.location}. Periksa nama dan nomor sebelum membuka WhatsApp.</p>
+          {waTargetIncident.photoUrl && (
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center', padding: '10px 12px', background: '#f8faf8', border: '1px solid #dce8dd', borderRadius: '10px', margin: '4px 0' }}>
+              <img src={waTargetIncident.photoUrl} alt="Foto Kehilangan" style={{ width: '56px', height: '56px', objectFit: 'cover', borderRadius: '8px', border: '1px solid #c2d6c4' }} />
+              <div style={{ fontSize: '10px', color: '#4a5d4e', lineHeight: 1.4 }}>
+                <strong style={{ display: 'block', color: '#273c2c', fontSize: '11px' }}>📷 Bukti Foto Tersedia</strong>
+                <span>Pastikan wujud barang, anak, atau satwa yang ditemukan cocok dengan foto di samping sebelum proses serah terima.</span>
+              </div>
+            </div>
+          )}
           <label>Nama penerima<input value={waRecipientName} onChange={(event) => setWaRecipientName(event.target.value)} maxLength={80} /></label>
           <label>Nomor WhatsApp<input value={waRecipientPhone} onChange={(event) => setWaRecipientPhone(event.target.value)} type="tel" inputMode="tel" placeholder="Contoh: 08123456789" /></label>
           <label>Isi kabar<select value={waTemplate} onChange={(event) => handleTemplateChange(event.target.value as 'found' | 'searching' | 'info' | 'custom')}>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent, type ChangeEvent } from 'react'
 import { collection, doc, onSnapshot, setDoc } from 'firebase/firestore'
 import { db } from './firebase'
 import './VisitorPortal.css'
@@ -52,6 +52,75 @@ export default function VisitorPortal({ onManagerLogin }: { onManagerLogin: () =
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   const [live, setLive] = useState(false)
+  const [photoPreview, setPhotoPreview] = useState<string>('')
+  const [photoName, setPhotoName] = useState<string>('')
+  const [photoCompressing, setPhotoCompressing] = useState<boolean>(false)
+
+  function handlePhotoChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      alert('Mohon pilih file gambar yang valid (JPG, PNG, atau WEBP).')
+      return
+    }
+
+    setPhotoCompressing(true)
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const img = new Image()
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas')
+          const maxDim = 800
+          let width = img.width
+          let height = img.height
+          if (width > height) {
+            if (width > maxDim) {
+              height = Math.round((height * maxDim) / width)
+              width = maxDim
+            }
+          } else {
+            if (height > maxDim) {
+              width = Math.round((width * maxDim) / height)
+              height = maxDim
+            }
+          }
+          canvas.width = width
+          canvas.height = height
+          const ctx = canvas.getContext('2d')
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height)
+            const compressed = canvas.toDataURL('image/jpeg', 0.72)
+            setPhotoPreview(compressed)
+            setPhotoName(file.name)
+          } else {
+            setPhotoPreview(e.target?.result as string)
+            setPhotoName(file.name)
+          }
+        } catch {
+          setPhotoPreview(e.target?.result as string)
+          setPhotoName(file.name)
+        } finally {
+          setPhotoCompressing(false)
+        }
+      }
+      img.onerror = () => {
+        setPhotoCompressing(false)
+        alert('Gagal memproses gambar.')
+      }
+      img.src = e.target?.result as string
+    }
+    reader.onerror = () => {
+      setPhotoCompressing(false)
+      alert('Gagal membaca file gambar.')
+    }
+    reader.readAsDataURL(file)
+  }
+
+  function removePhoto() {
+    setPhotoPreview('')
+    setPhotoName('')
+  }
 
   useEffect(() => {
     const subscriptions = [
@@ -143,6 +212,7 @@ export default function VisitorPortal({ onManagerLogin }: { onManagerLogin: () =
         status: 'Baru' as const,
         details: fullDetails,
         reportedBy: reportedBy.slice(0, 100),
+        photoUrl: photoPreview || undefined,
         createdAt: now,
         updatedAt: now,
       }
@@ -161,7 +231,7 @@ export default function VisitorPortal({ onManagerLogin }: { onManagerLogin: () =
       // 2. Simpan ke Cloud Firestore (zoo_incidents)
       try {
         const docRef = doc(db, 'zoo_incidents', incidentId)
-        await setDoc(docRef, {
+        const payload: Record<string, any> = {
           title: incidentData.title,
           type: incidentData.type,
           location: incidentData.location,
@@ -171,12 +241,18 @@ export default function VisitorPortal({ onManagerLogin }: { onManagerLogin: () =
           reportedBy: incidentData.reportedBy,
           createdAt: now,
           updatedAt: now,
-        })
+        }
+        if (photoPreview) {
+          payload.photoUrl = photoPreview
+        }
+        await setDoc(docRef, payload)
       } catch (firestoreErr) {
         console.warn('Penyimpanan Firestore gagal (laporan tetap tersimpan di lokal):', firestoreErr)
       }
 
       setReportSent(true)
+      setPhotoPreview('')
+      setPhotoName('')
       form.reset()
     } catch (reason) {
       setError(reason instanceof Error ? `Laporan belum terkirim: ${reason.message}` : 'Laporan belum terkirim. Periksa koneksi.')
@@ -257,6 +333,42 @@ export default function VisitorPortal({ onManagerLogin }: { onManagerLogin: () =
           <label>Lokasi kejadian<input name="location" required maxLength={100} placeholder="Contoh: Zona Sabana, dekat kandang jerapah"/></label>
           <label>Judul laporan<input name="title" required maxLength={100} placeholder="Contoh: Anak terpisah dari rombongan"/></label>
           <label>Detail & Ciri-ciri<textarea name="details" required rows={4} maxLength={1200} placeholder="Ceritakan situasi, ciri-ciri anak/satwa/barang, dan bantuan yang diperlukan…"/></label>
+
+          <div className="visitor-photo-uploader">
+            <div className="visitor-photo-uploader-label">
+              <strong>📷 Bukti Foto Kehilangan / Ciri-Ciri (Foto Barang / Anak / Satwa)</strong>
+              <small>Lampirkan foto agar admin dan posko keamanan langsung melihat wujud fisik yang dicari.</small>
+            </div>
+            {!photoPreview ? (
+              <label className="visitor-photo-dropzone">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handlePhotoChange}
+                  disabled={photoCompressing}
+                  style={{ display: 'none' }}
+                />
+                <span className="dropzone-icon">{photoCompressing ? '⏳' : '📸'}</span>
+                <span className="dropzone-text">
+                  {photoCompressing ? 'Sedang memproses foto…' : 'Ketuk untuk Pilih / Ambil Foto'}
+                </span>
+                <small className="dropzone-hint">Format JPG, PNG, WEBP · Ambil dari Galeri atau Kamera HP</small>
+              </label>
+            ) : (
+              <div className="visitor-photo-preview-card">
+                <div className="visitor-photo-thumb-wrap">
+                  <img src={photoPreview} alt="Bukti Foto Kehilangan" className="visitor-photo-thumb-img" />
+                </div>
+                <div className="visitor-photo-meta">
+                  <span className="visitor-photo-tag">✓ Foto Terlampir</span>
+                  <strong className="visitor-photo-filename">{photoName || 'Foto bukti kehilangan'}</strong>
+                  <button type="button" onClick={removePhoto} className="visitor-photo-delete-btn">
+                    🗑️ Hapus & Ganti Foto
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
           <button className="visitor-primary" type="submit" disabled={saving}>{saving ? 'Mengirim ke Pusat Komando…' : 'Kirim laporan ke petugas'}</button>
           <small>Laporan ini langsung diteruskan ke Web Admin Pusat Komando agar petugas segera mengetahui siapa pelapornya.</small>
         </form><aside className="visitor-report-help"><span>🛟</span><h3>Perlu bantuan segera?</h3><p>Datangi petugas berseragam atau pos informasi terdekat. Laporan ini diteruskan ke pusat komando pengelola secara real-time.</p>{reportSent && <div className="visitor-report-success" role="status">✓ Laporan berhasil terkirim ke Pusat Komando! Nama pelapor dan detail telah masuk ke sistem admin.</div>}</aside></div></section>}
