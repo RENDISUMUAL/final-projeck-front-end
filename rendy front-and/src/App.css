@@ -307,13 +307,13 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 
 /* Habitat */
 .habitat-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
-.habitat-card { overflow: hidden; border: 1px solid #e9eee9; border-radius: 12px; background: #fff; }
-.habitat-cover { position: relative; display: flex; align-items: center; justify-content: center; height: 116px; overflow: hidden; }
-.habitat-cover::before, .habitat-cover::after { position: absolute; bottom: -49px; width: 170px; height: 105px; border-radius: 50%; background: #ffffff24; content: ''; }
-.habitat-cover::before { left: -47px; }.habitat-cover::after { right: -47px; bottom: -57px; background: #204e2820; }
-.habitat-cover > span { z-index: 1; font-size: 43px; filter: drop-shadow(0 4px 3px #243a2b2a); }
-.habitat-cover small { position: absolute; top: 10px; left: 11px; color: #ffffffcf; font-size: 7px; font-weight: 800; letter-spacing: 1px; }
-.cover-0 { background: linear-gradient(135deg, #d6c48b, #94ad71); }.cover-1 { background: linear-gradient(135deg, #a9c5a1, #527d57); }.cover-2 { background: linear-gradient(135deg, #a7d2d3, #588c91); }.cover-3 { background: linear-gradient(135deg, #c0d3a9, #82976b); }.cover-4 { background: linear-gradient(135deg, #e7c6a9, #ba8c7c); }
+.habitat-card { overflow: hidden; border: 1px solid rgba(46, 118, 84, 0.14); border-radius: 14px; background: #fff; box-shadow: 0 4px 18px rgba(32, 55, 42, 0.04); transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease; }
+.habitat-card:hover { transform: translateY(-3px); box-shadow: 0 12px 28px rgba(32, 55, 42, 0.09); border-color: rgba(46, 118, 84, 0.26); }
+.habitat-cover { position: relative; display: block; height: 144px; overflow: hidden; background: #1b3322; }
+.habitat-real-photo { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 0.4s ease; }
+.habitat-card:hover .habitat-real-photo { transform: scale(1.06); }
+.habitat-cover-overlay { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(16, 32, 22, 0.4) 0%, rgba(0, 0, 0, 0) 45%, rgba(16, 32, 22, 0.68) 100%); pointer-events: none; }
+.habitat-area-badge { position: absolute; top: 10px; left: 11px; padding: 4px 9px; border: 1px solid rgba(255, 255, 255, 0.4); border-radius: 99px; background: rgba(18, 38, 25, 0.72); color: #f2f8f3; font-size: 8px; font-weight: 800; letter-spacing: 0.9px; backdrop-filter: blur(6px); z-index: 2; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2); }
 .habitat-info { padding: 13px 14px 14px; }
 .habitat-name-row { display: flex; align-items: flex-start; justify-content: space-between; }
 .habitat-name-row p { margin: 0 0 4px; color: #a1aaa3; font-size: 7px; font-weight: 800; letter-spacing: 1px; }
@@ -330,9 +330,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .habitat-resident-thumb { width: 28px; height: 28px; border-radius: 50%; border: 2px solid #fff; margin-right: -6px; object-fit: cover; background: #edf2ea; box-shadow: 0 1px 3px rgba(0,0,0,0.15); cursor: pointer; transition: transform .15s ease, z-index .15s; }
 .habitat-resident-thumb:hover { transform: scale(1.25); z-index: 5; }
 .habitat-resident-names { min-height: 22px; margin-top: 4px; color: #8d998f; font-size: 8px; line-height: 1.5; }
-.habitat-card-actions { position: absolute; z-index: 3; top: 8px; right: 8px; display: flex; gap: 5px; }
-.habitat-card-actions button { display: grid; place-items: center; width: 25px; height: 25px; border: 1px solid #ffffffad; border-radius: 7px; background: #ffffffed; color: #58745f; font-size: 13px; cursor: pointer; }
-.habitat-card-actions button:last-child { color: #bd6d61; }
+.habitat-card-actions { position: absolute; z-index: 3; top: 9px; right: 9px; display: flex; gap: 6px; }
+.habitat-card-actions button { display: grid; place-items: center; width: 27px; height: 27px; border: 1px solid rgba(255, 255, 255, 0.45); border-radius: 8px; background: rgba(255, 255, 255, 0.9); color: #274932; font-size: 13px; cursor: pointer; backdrop-filter: blur(6px); box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15); transition: background 0.15s ease, transform 0.15s ease; }
+.habitat-card-actions button:hover { background: #ffffff; transform: scale(1.08); }
+.habitat-card-actions button:last-child { color: #c53030; }
 .habitat-status.habitat-dirty { background: #fff3e7; color: #a87b3e; }
 .no-residents { color: #a3ada5; font-size: 8px; }
 .resident-count { margin-left: auto; color: #96a198; font-size: 8px; }
@@ -502,9 +503,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .animal-card-body { padding: 12px 11px; }
   .animal-actions { opacity: 1; }
   .habitat-grid { grid-template-columns: 1fr; gap: 10px; }
-  .habitat-card { display: grid; grid-template-columns: 105px 1fr; }
+  .habitat-card { display: grid; grid-template-columns: 130px 1fr; }
   .habitat-cover { height: 100%; min-height: 150px; }
-  .habitat-cover > span { font-size: 36px; }
   .habitat-info { padding: 11px; }
   .occupancy-row { margin-top: 15px; }
   .care-summary { padding: 13px; }

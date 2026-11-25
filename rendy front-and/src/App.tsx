@@ -55,6 +55,7 @@ type Habitat = {
   location: string
   capacity: number
   cleanliness: 'Bersih' | 'Perlu dibersihkan'
+  imageUrl?: string
 }
 
 type CareTask = {
@@ -91,12 +92,33 @@ const ANIMALS_KEY = 'wildlifepark_animals_v2'
 const CARE_KEY = 'wildlifepark_care_v2'
 const HABITATS_KEY = 'wildlifepark_habitats_v2'
 
+export const defaultHabitatImages: Record<string, string> = {
+  'Sabana': 'https://images.unsplash.com/photo-1516426122078-c23e76319801?w=900&auto=format&fit=crop&q=85',
+  'Hutan Hujan': 'https://images.unsplash.com/photo-1511497584788-87676104235f?w=900&auto=format&fit=crop&q=85',
+  'Danau Buaya': 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=900&auto=format&fit=crop&q=85',
+  'Rumah Primata': 'https://images.unsplash.com/photo-1540573133985-87b6da6d54a9?w=900&auto=format&fit=crop&q=85',
+  'Kandang Burung': 'https://images.unsplash.com/photo-1552728089-57bdde30beb3?w=900&auto=format&fit=crop&q=85',
+}
+
+export function getHabitatImage(habitat: Habitat, index: number): string {
+  if (habitat.imageUrl && habitat.imageUrl.trim()) return habitat.imageUrl
+  if (defaultHabitatImages[habitat.name]) return defaultHabitatImages[habitat.name]
+  const defaults = [
+    'https://images.unsplash.com/photo-1516426122078-c23e76319801?w=900&auto=format&fit=crop&q=85',
+    'https://images.unsplash.com/photo-1511497584788-87676104235f?w=900&auto=format&fit=crop&q=85',
+    'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=900&auto=format&fit=crop&q=85',
+    'https://images.unsplash.com/photo-1540573133985-87b6da6d54a9?w=900&auto=format&fit=crop&q=85',
+    'https://images.unsplash.com/photo-1552728089-57bdde30beb3?w=900&auto=format&fit=crop&q=85',
+  ]
+  return defaults[index % defaults.length]
+}
+
 const initialHabitats: Habitat[] = [
-  { id: 'h1', name: 'Sabana', location: 'Zona Barat · Area terbuka padang rumput', capacity: 12, cleanliness: 'Bersih' },
-  { id: 'h2', name: 'Hutan Hujan', location: 'Zona Utara · Kanopi hutan tropis lembap', capacity: 10, cleanliness: 'Bersih' },
-  { id: 'h3', name: 'Danau Buaya', location: 'Zona Timur · Danau air payau & rawa', capacity: 8, cleanliness: 'Perlu dibersihkan' },
-  { id: 'h4', name: 'Rumah Primata', location: 'Zona Selatan · Area panjat alami & teduh', capacity: 9, cleanliness: 'Bersih' },
-  { id: 'h5', name: 'Kandang Burung', location: 'Zona Timur · Aviari kubah raksasa', capacity: 16, cleanliness: 'Bersih' },
+  { id: 'h1', name: 'Sabana', location: 'Zona Barat · Area terbuka padang rumput', capacity: 12, cleanliness: 'Bersih', imageUrl: 'https://images.unsplash.com/photo-1516426122078-c23e76319801?w=900&auto=format&fit=crop&q=85' },
+  { id: 'h2', name: 'Hutan Hujan', location: 'Zona Utara · Kanopi hutan tropis lembap', capacity: 10, cleanliness: 'Bersih', imageUrl: 'https://images.unsplash.com/photo-1511497584788-87676104235f?w=900&auto=format&fit=crop&q=85' },
+  { id: 'h3', name: 'Danau Buaya', location: 'Zona Timur · Danau air payau & rawa', capacity: 8, cleanliness: 'Perlu dibersihkan', imageUrl: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=900&auto=format&fit=crop&q=85' },
+  { id: 'h4', name: 'Rumah Primata', location: 'Zona Selatan · Area panjat alami & teduh', capacity: 9, cleanliness: 'Bersih', imageUrl: 'https://images.unsplash.com/photo-1540573133985-87b6da6d54a9?w=900&auto=format&fit=crop&q=85' },
+  { id: 'h5', name: 'Kandang Burung', location: 'Zona Timur · Aviari kubah raksasa', capacity: 16, cleanliness: 'Bersih', imageUrl: 'https://images.unsplash.com/photo-1552728089-57bdde30beb3?w=900&auto=format&fit=crop&q=85' },
 ]
 
 function getTodayISODate() {
@@ -461,9 +483,27 @@ function readStorage<T,>(key: string, fallback: T[]): T[] {
   }
 }
 
+function readHabitatsStorage(): Habitat[] {
+  try {
+    const stored = localStorage.getItem(HABITATS_KEY)
+    if (stored) {
+      const parsed = JSON.parse(stored) as Habitat[]
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed.map((h, i) => ({
+          ...h,
+          imageUrl: h.imageUrl || defaultHabitatImages[h.name] || getHabitatImage(h, i),
+        }))
+      }
+    }
+    return initialHabitats
+  } catch {
+    return initialHabitats
+  }
+}
+
 function ZooDashboard({ role, userEmail }: { role: 'admin'; userEmail: string }) {
   const [animals, setAnimals] = useFirestoreCollection<Animal>('zoo_animals', ANIMALS_KEY, readAnimalsStorage)
-  const [habitats, setHabitats] = useFirestoreCollection<Habitat>('zoo_habitats', HABITATS_KEY, () => readStorage(HABITATS_KEY, initialHabitats))
+  const [habitats, setHabitats] = useFirestoreCollection<Habitat>('zoo_habitats', HABITATS_KEY, readHabitatsStorage)
   const [careTasks, setCareTasks] = useFirestoreCollection<CareTask>('zoo_care_tasks', CARE_KEY, () =>
     readStorage<CareTask>(CARE_KEY, initialCare).map((task) => ({ ...task, date: task.date || getTodayISODate() })),
   )
@@ -606,12 +646,14 @@ function ZooDashboard({ role, userEmail }: { role: 'admin'; userEmail: string })
     event.preventDefault()
     const data = new FormData(event.currentTarget)
     const name = String(data.get('name') ?? '').trim()
+    const customImage = String(data.get('imageUrl') ?? '').trim()
     const habitat: Habitat = {
       id: editingHabitat?.id ?? crypto.randomUUID(),
       name,
       location: String(data.get('location') ?? '').trim(),
       capacity: Number(data.get('capacity')),
       cleanliness: String(data.get('cleanliness')) as Habitat['cleanliness'],
+      imageUrl: customImage || (editingHabitat?.imageUrl ?? defaultHabitatImages[name]),
     }
     if (!name || !habitat.location || habitat.capacity < 1) return
     const assignedAnimalCount = animals.filter((animal) => animal.habitat === (editingHabitat?.name ?? name)).length
@@ -994,6 +1036,7 @@ function ZooDashboard({ role, userEmail }: { role: 'admin'; userEmail: string })
                 <form className="modal-form" onSubmit={saveHabitat}>
                   <label>Nama kandang<input name="name" required maxLength={60} defaultValue={editingHabitat?.name ?? ''} placeholder="Contoh: Zona Reptil" /></label>
                   <label>Lokasi kandang<input name="location" required maxLength={100} defaultValue={editingHabitat?.location ?? ''} placeholder="Contoh: Zona Timur · dekat klinik" /></label>
+                  <label>URL Foto Realistis Kandang (opsional)<input name="imageUrl" defaultValue={editingHabitat?.imageUrl ?? ''} placeholder="Contoh: https://images.unsplash.com/..." /></label>
                   <div className="form-two-col">
                     <label>Kapasitas satwa<input name="capacity" type="number" min="1" required defaultValue={editingHabitat?.capacity ?? 10} /></label>
                     <label>Status kebersihan<select name="cleanliness" defaultValue={editingHabitat?.cleanliness ?? 'Bersih'}><option>Bersih</option><option>Perlu dibersihkan</option></select></label>
@@ -1344,12 +1387,20 @@ function ZooDashboard({ role, userEmail }: { role: 'admin'; userEmail: string })
               {habitats.map((habitat, index) => {
                 const residents = animals.filter((animal) => animal.habitat === habitat.name)
                 const percentage = Math.min(100, Math.round((residents.length / habitat.capacity) * 100))
-                const art = ['🌾', '🌴', '💧', '🌿', '🌺'][index % 5]
                 return (
                   <article className="habitat-card" key={habitat.id}>
-                    <div className={`habitat-cover cover-${index % 5}`}>
-                      <span>{art}</span>
-                      <small>AREA {String(index + 1).padStart(2, '0')}</small>
+                    <div className="habitat-cover">
+                      <img
+                        src={getHabitatImage(habitat, index)}
+                        alt={`Foto kandang ${habitat.name}`}
+                        className="habitat-real-photo"
+                        loading="lazy"
+                        onError={(e) => {
+                          e.currentTarget.src = 'https://images.unsplash.com/photo-1516426122078-c23e76319801?w=900&auto=format&fit=crop&q=85'
+                        }}
+                      />
+                      <div className="habitat-cover-overlay" />
+                      <span className="habitat-area-badge">AREA {String(index + 1).padStart(2, '0')}</span>
                       <div className="habitat-card-actions">
                         <button onClick={() => { setEditingHabitat(habitat); setHabitatDialog(true) }} aria-label={`Edit kandang ${habitat.name}`}>✎</button>
                         <button onClick={() => deleteHabitat(habitat)} aria-label={`Hapus kandang ${habitat.name}`}>×</button>
